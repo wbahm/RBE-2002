@@ -15,9 +15,9 @@ typedef enum DriveDirection {
 };
 
 #define LEFT_DIR_PIN 4
-#define LEFT_PWM_PIN 2
+#define LEFT_PWM_PIN 2 //can't change because implemented at timer register lvl
 #define RIGHT_DIR_PIN 6
-#define RIGHT_PWM_PIN 2
+#define RIGHT_PWM_PIN 5 //can't change because implemented at timer register lvl
 
 #define LEFT_REVERSED 0
 #define RIGHT_REVERSED 0
@@ -45,7 +45,7 @@ static void setDrivePWM(unsigned int duty_cycle, DriveSide side,DriveDirection n
   constrain(duty_cycle,0,65535);
   if(side == LEFT)
   {
-    OCR3A = ((duty_cycle*PWM_COUNT)/65535);
+    OCR3A = ((duty_cycle*(unsigned long)PWM_COUNT)/65535);
     if(newDir == FORWARD)
     {
       if(LEFT_REVERSED)
@@ -63,7 +63,7 @@ static void setDrivePWM(unsigned int duty_cycle, DriveSide side,DriveDirection n
   }
   else if (side == RIGHT)
   {
-    OCR3B = ((duty_cycle*PWM_COUNT)/65535);
+    OCR3B = ((duty_cycle*(unsigned long)PWM_COUNT)/65535);
     if(newDir == FORWARD)
     {
       if(RIGHT_REVERSED)

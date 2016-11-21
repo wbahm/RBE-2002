@@ -4,11 +4,11 @@
 #include <Arduino.h>
 
 //(a/(1000*(x+b)))-42 //return dist in mm
-#define IR_ZERO_DIST(x) ((48955435/(x+33))-4200)/1000 //return dist in mm
-#define IR_ONE_DIST(x) ((49281348/(x+9))-4200)/1000 //return dist in mm
-#define IR_TWO_DIST(x) ((50133745/(x+20))-4200)/1000 //return dist in mm
-#define IR_THREE_DIST(x) ((81641309/(x-65))-4200)/1000 //return dist in mm
-#define IR_FOUR_DIST(x) ((44177767/(x-66))-4200)/1000 //return dist in mm
+#define IR_ZERO_DIST(x) (((48955435/(x+33))-4200)/1000) //return dist in mm
+#define IR_ONE_DIST(x) (((49281348/(x+9))-4200)/1000) //return dist in mm
+#define IR_TWO_DIST(x) (((50133745/(x+20))-4200)/1000) //return dist in mm
+#define IR_THREE_DIST(x) ((x>70)?(((81641309/(x-65))-4200)/1000):(60*25)) //return dist in mm
+#define IR_FOUR_DIST(x) ((x>70)?(((44177767/(x-66))-4200)/1000):(60*25)) //return dist in mm
 
 static void wallInit() {
   analogReference(INTERNAL2V56); //Better range for IR sensors which max out at 2.25v
@@ -17,12 +17,15 @@ static void wallInit() {
 }
 
 static long Y_SENS = (long)(25.4*6); //y Offset between sensors
-static long X_SENS = (long)(25.4*0); //x offset from sensor to center of robot
+static long X_SENS = (long)(25.4*4.25); //x offset from sensor to center of robot
 
 static long calculateXOffset(long d1, long d2, long k1) {
+  if(k1<Y_SENS)
   return ((Y_SENS/k1)*(((d2+d1)/2)+X_SENS));
+  else
+  return ((d2+d1)/2)+X_SENS;
 }
-static long Y_SENS_2 = (long)(25.4*3); //y offset to front sensor; mm
+static long Y_SENS_2 = (long)(25.4*4.25); //y offset to front sensor; mm
 static long calculateFrontDist(long d3, long k1) {
   return (2*Y_SENS_2/k1)*(d3+Y_SENS_2);
 }
@@ -33,16 +36,15 @@ typedef enum WallSide {
 };
 
 typedef struct WallState {
-  unsigned long frontDist; //mm
-  unsigned long wallDist; //mm
-  bool missingEdge; //true if one of the wall sensors is at max because no wall; Also an error check
+  long frontDist; //mm
+  long wallDist; //mm
 };
 
-static const long MAX_IR_DIST = 400; //mm
+static const long MAX_IR_DIST = 14*25.4; //mm
 static WallState getWallState(WallSide side) {// Add averaging if needed
-  static unsigned long d1;
-  static unsigned long d2;
-  static unsigned long d3;
+  static long d1;
+  static long d2;
+  static long d3;
   if(side == LEFT_WALL)
   {
     d1 = IR_ZERO_DIST(analogRead(A0));
@@ -55,19 +57,19 @@ static WallState getWallState(WallSide side) {// Add averaging if needed
   }
   d3 = IR_THREE_DIST(analogRead(A3)); //front sensor
   WallState newState;
-  if((d1>MAX_IR_DIST) || (d2>MAX_IR_DIST))
+  long k1 = sqrt((Y_SENS*Y_SENS)+((d2-d1)*(d2-d1)));
+  newState.wallDist = calculateXOffset(d1,d2,k1);
+  if(d3 > MAX_IR_DIST)
   {
-    newState.missingEdge = true;
+    newState.frontDist = -1;
     return newState;
   }
   else
   {
-    newState.missingEdge = false;
+    newState.frontDist = calculateFrontDist(d3, k1);
+    return newState;
+ 
   }
-  unsigned long k1 = sqrt((Y_SENS*Y_SENS)+((d2-d1)*(d2-d1)));
-  newState.wallDist = calculateXOffset(d1,d2,k1);
-  newState.frontDist = calculateFrontDist(d3, k1);
-  return newState;
 }
 
 
