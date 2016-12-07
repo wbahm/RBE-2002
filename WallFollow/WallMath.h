@@ -38,6 +38,7 @@ typedef enum WallSide {
 typedef struct WallState {
   long frontDist; //mm
   long wallDist; //mm
+  long theta; //mRad
 };
 
 static const long MAX_IR_DIST = 14*25.4; //mm
@@ -59,6 +60,7 @@ static WallState getWallState(WallSide side) {// Add averaging if needed
   WallState newState;
   long k1 = sqrt((Y_SENS*Y_SENS)+((d2-d1)*(d2-d1)));
   newState.wallDist = calculateXOffset(d1,d2,k1);
+  newState.theta = 1000*((PI/2)-acos((d2-d1)/(float)Y_SENS));
   if(d3 > MAX_IR_DIST)
   {
     newState.frontDist = -1;
@@ -66,10 +68,9 @@ static WallState getWallState(WallSide side) {// Add averaging if needed
   }
   else
   {
-    newState.frontDist = calculateFrontDist(d3, k1);
-    return newState;
- 
-  }
+    newState.frontDist = calculateFrontDist(d3, k1); 
+  }  
+  return newState;
 }
 
 

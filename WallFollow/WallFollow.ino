@@ -15,11 +15,12 @@ const unsigned long long contrT = 1000000/contrFreq;
 static const long long UM_PER_TICK = 27;
 static const long long US_TO_SEC = 1000000;
 static const long long SETPOINT = 0.75*2.75*PI*2.54*10000; // um/sec -> 3.9 in/sec -> 0.46 rps
-static const long long WALL_SETPOINT = (long)8*25.4;
+static const long long WALL_SETPOINT = (long)10*25.4;
 
 PID* leftPid;
 PID* rightPid;
-PID* wallPid;
+PID* wallOffsetPid;
+PID* wallThetaPid;
 long lastLeftPwr = 0;
 long lastRightPwr = 0;
 unsigned long long lastLeftEnc = 0;
@@ -31,12 +32,13 @@ void setup() {
   initDrivePWM();//sets up timer for PWM generation
   leftPid = new PID(100,0,0);
   rightPid = new PID(100,0,0);
-  wallPid = new PID(6000000,0,0);//5000000
+  wallOffsetPid = new PID(600000,0,0);//5000000
+  wallThetaPid = new PID(6000000,0,0); //theta PID should be > than x PID
 }
 unsigned long long lastWallPID = 0;
 long long lastLeftSetpoint = SETPOINT;//+50000;
 long long lastRightSetpoint = SETPOINT;//-50000;
-long long wallpidOut = 0;
+long long walloffsetpidOut = 0;
 long long MAX_SETPOINT = 0.9*2.75*PI*2.54*10000;
 long long MIN_SETPOINT = 0.3*2.75*PI*2.54*10000;
 void loop() {
@@ -45,14 +47,16 @@ void loop() {
   {
     lastWallPID = micros();
     WallState newState = getWallState(RIGHT_WALL);
-    wallpidOut = wallPid -> compute(WALL_SETPOINT,newState.wallDist);
-    lastLeftSetpoint = (SETPOINT-wallpidOut);
-    lastRightSetpoint = (SETPOINT+wallpidOut);
+    walloffsetpidOut = wallOffsetPid -> compute(WALL_SETPOINT,newState.wallDist);
+    lastLeftSetpoint = (SETPOINT-walloffsetpidOut);
+    lastRightSetpoint = (SETPOINT+walloffsetpidOut);
     lastLeftSetpoint = constrain(lastLeftSetpoint,MIN_SETPOINT,MAX_SETPOINT);
     lastRightSetpoint = constrain(lastRightSetpoint,MIN_SETPOINT,MAX_SETPOINT);
     DebugPrint(newState.wallDist/25.4);
     DebugPrint('\t');
-    DebugPrint((long)wallpidOut);
+    DebugPrint((newState.theta/PI)*0.180);
+    DebugPrint('\t');
+    DebugPrint((long)walloffsetpidOut);
     DebugPrint('\t');
     DebugPrint((long)lastLeftSetpoint);
     DebugPrint('\t');
