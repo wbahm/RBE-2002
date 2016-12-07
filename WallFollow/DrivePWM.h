@@ -19,7 +19,7 @@ typedef enum DriveDirection {
 #define RIGHT_DIR_PIN 6
 #define RIGHT_PWM_PIN 5 //can't change because implemented at timer register lvl
 
-#define LEFT_REVERSED 0
+#define LEFT_REVERSED 1
 #define RIGHT_REVERSED 0
 
 //PWM defines
