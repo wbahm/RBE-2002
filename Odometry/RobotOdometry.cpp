@@ -31,6 +31,9 @@ void computeOdometry(Encoder* leftEnc,Encoder* rightEnc) { //called as fast as p
     float encDeltaTheta = ((rightDist-leftDist)/WHEEL_BASE)*1000; //uRad
     //Serial.println(myPosition.theta);
     myPosition.theta += encDeltaTheta; //add gyrodometry here
+    if(myPosition.theta > (2*PI*1000))
+      myPosition.theta = myPosition.theta-(2*PI*1000);
+    
   }
 }
 
