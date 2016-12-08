@@ -52,7 +52,7 @@ void setup() {
   rightPid = new PID(100,0,0);
   wallOffsetPid = new PID(3000000,0,0);//600000
   wallThetaPid = new PID(600000,0,0); 
-  turnPid = new PID(600000,0,0);
+  turnPid = new PID(1184976,0,0);
 }
 unsigned long long lastWallPID = 0;
 long long lastLeftSetpoint = SETPOINT;//+50000;
@@ -133,6 +133,8 @@ void handleMotorControl(long long leftSetpoint,long long rightSetpoint) {
 }
 
 void handleWallPID() {
+  static long long stoppedTime = 0;
+  static bool doneTurn = false;
   if((micros()-lastWallPID) >(16667)) //60 hz
   {
     lastWallPID = micros();
@@ -142,10 +144,19 @@ void handleWallPID() {
     {
       lastLeftSetpoint = 0; //stop if wall in front is too close
       lastRightSetpoint = 0;
+      if(doneTurn == false)
+      {
+        doneTurn = true;
+        stoppedTime = micros();
+      }
       targetTurnHeading = getTheta()+(PI/2.0);
-      currentState = TURN;
-      previousState = WALL_FOLLOW;
-      DebugPrintln("Back to turn");
+      if((micros()-stoppedTime)>500000)
+      {
+        doneTurn = false;
+        currentState = TURN;
+        previousState = WALL_FOLLOW;
+        DebugPrintln("Back to turn");
+      }
     }
     else if(newState.specCase)
     {
@@ -189,19 +200,20 @@ void handleWallPID() {
   }
 }
 
-
 static const float TURN_TOL = 5*(PI/180.0); //Rad
 
-long long stoppedTime = 0;
-bool doneTurn = false;
 void handleTurn() {
+  static long long stoppedTime = 0;
+  static bool doneTurn = false;
   //Serial.println("Turn");
   if(targetTurnHeading>(2*PI))
   {
     targetTurnHeading -= (2*PI);
   }
   float currentHeading = getTheta();
-  long long pidOut = abs(turnPid -> compute(targetTurnHeading*10000,currentHeading*10000)); //scaled because pid uses long longs
+  float absError = abs(currentHeading-targetTurnHeading);
+  if(absError>PI) absError = (2*PI)-absError;
+  long long pidOut = abs(turnPid -> compute(0,abs(currentHeading)*10000)); //scaled because pid uses long longs
   if((targetTurnHeading>currentHeading) xor (abs(targetTurnHeading-currentHeading)>PI))
   {
     //turn counter clockwise
