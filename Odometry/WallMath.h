@@ -39,6 +39,7 @@ typedef struct WallState {
   long frontDist; //mm
   long wallDist; //mm
   long theta; //mRad
+  bool specCase; //true if special case(front inf. and back not
 };
 
 static const long MAX_IR_DIST = 14*25.4; //mm
@@ -58,6 +59,15 @@ static WallState getWallState(WallSide side) {// Add averaging if needed
   }
   d3 = IR_THREE_DIST(analogRead(A3)); //front sensor
   WallState newState;
+  if((d1>MAX_IR_DIST)&&(d2<MAX_IR_DIST))
+  {
+    newState.specCase = true;
+  }
+  else
+  {
+    newState.specCase = false;
+  }
+  
   long k1 = sqrt((Y_SENS*Y_SENS)+((d2-d1)*(d2-d1)));
   newState.wallDist = calculateXOffset(d1,d2,k1);
   newState.theta = 1000*((PI/2)-acos((d2-d1)/(float)Y_SENS));

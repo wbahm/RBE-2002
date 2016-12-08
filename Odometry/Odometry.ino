@@ -30,6 +30,19 @@ unsigned long long lastRightEnc = 0;
 
 PID* wallOffsetPid;
 PID* wallThetaPid;
+
+PID* turnPid;
+
+typedef enum RobotState {
+  WALL_FOLLOW,
+  TURN,
+  STANDBY,
+  SPEC_CASE //Detected that front wall sensor maxed and other isn't
+};
+
+RobotState currentState = STANDBY;
+RobotState previousState = STANDBY;
+
 void setup() {
   DebugBegin();
   DebugPrintln("Serial started");
@@ -39,6 +52,7 @@ void setup() {
   rightPid = new PID(100,0,0);
   wallOffsetPid = new PID(3000000,0,0);//600000
   wallThetaPid = new PID(600000,0,0); 
+  turnPid = new PID(600000,0,0);
 }
 unsigned long long lastWallPID = 0;
 long long lastLeftSetpoint = SETPOINT;//+50000;
@@ -48,20 +62,35 @@ long long wallthetapidOut = 0;
 long long MAX_SETPOINT = 0.9*2.75*PI*2.54*10000;
 long long MIN_SETPOINT = 0.3*2.75*PI*2.54*10000;
 void handleWallPID();
+void handleTurn();
+float targetTurnHeading=0; //Rad
 void loop() {
-  // wall pid
-  handleWallPID();
+  switch(currentState)
+  {
+    case STANDBY://add btn later
+    currentState = WALL_FOLLOW;
+    break;
+    case WALL_FOLLOW:
+    handleWallPID();
+    break;
+    case TURN:
+    handleTurn();
+    break;
+    default:
+    1+1;
+    break;
+  }
   handleMotorControl(lastLeftSetpoint,lastRightSetpoint);
   computeOdometry(&leftEnc,&rightEnc);
-  DebugPrint(getXLoc()); //mm
+/*  DebugPrint(getXLoc()); //mm
   DebugPrint('\t');
   DebugPrint(getYLoc()); //mm
   DebugPrint('\t');
-  DebugPrintln(getTheta()*(180/PI)); //deg
+  DebugPrintln(getTheta()*(180/PI)); //deg*/
 }
 void handleMotorControl(long long leftSetpoint,long long rightSetpoint) {
     if((micros()-lastContr)>contrT)
-  {    
+  {  
     //Get time diff and enc diff
     long long diffTime = micros()-lastContr;
     lastContr = micros();
@@ -104,10 +133,15 @@ void handleWallPID() {
   {
     lastWallPID = micros();
     WallState newState = getWallState(RIGHT_WALL);
-    if((newState.frontDist < (25.4*10))&&(newState.frontDist!=-1))
+    DebugPrintln((newState.frontDist < (25.4*10))&&(newState.frontDist>5));
+    if((newState.frontDist < (25.4*10))&&(newState.frontDist>5))
     {
       lastLeftSetpoint = 0; //stop if wall in front is too close
       lastRightSetpoint = 0;
+      targetTurnHeading = getTheta()+(PI/2.0);
+      currentState = TURN;
+      previousState = WALL_FOLLOW;
+      DebugPrintln("Back to turn");
     }
     else
     {
@@ -144,5 +178,43 @@ void handleWallPID() {
       DebugPrint('\t');
       DebugPrintln((rightdiff/8245.81)*(1000000/16667.0));*/
     }
+  }
+}
+
+
+static const float TURN_TOL = 5*(PI/180.0); //Rad
+
+void handleTurn() {
+  //Serial.println("Turn");
+  if(targetTurnHeading>(2*PI))
+  {
+    targetTurnHeading -= (2*PI);
+  }
+  float currentHeading = getTheta();
+  long long pidOut = abs(turnPid -> compute(targetTurnHeading*10000,currentHeading*10000)); //scaled because pid uses long longs
+  if(currentHeading < targetTurnHeading)
+  {
+    //turn counter clockwise
+    lastLeftSetpoint = constrain(-1*pidOut,-1*MAX_SETPOINT,MAX_SETPOINT);
+    lastRightSetpoint = constrain(pidOut,-1*MAX_SETPOINT,MAX_SETPOINT);
+  }
+  else
+  {
+    //turn clockwise
+    lastLeftSetpoint = constrain(pidOut,-1*MAX_SETPOINT,MAX_SETPOINT);
+    lastRightSetpoint = constrain(-1*pidOut,-1*MAX_SETPOINT,MAX_SETPOINT);
+  }
+  DebugPrint((long)lastLeftSetpoint);
+  DebugPrint('\t');
+  DebugPrint((long)lastRightSetpoint);
+    DebugPrint('\t');
+  DebugPrintln(abs(getTheta()-targetTurnHeading));
+  if(abs(getTheta()-targetTurnHeading)<TURN_TOL)
+  {
+      lastLeftSetpoint = 0; //stop motors
+      lastRightSetpoint = 0;
+      currentState = previousState;
+      previousState = TURN;
+      Serial.println("Back to wall");
   }
 }
