@@ -37,7 +37,8 @@ typedef enum RobotState {
   WALL_FOLLOW,
   TURN,
   STANDBY,
-  SPEC_CASE //Detected that front wall sensor maxed and other isn't
+  SPEC_CASE, //Detected that front wall sensor maxed and other isn't
+  FORWARD_DIST
 };
 
 RobotState currentState = STANDBY;
@@ -63,7 +64,11 @@ long long MAX_SETPOINT = 0.9*2.75*PI*2.54*10000;
 long long MIN_SETPOINT = 0.3*2.75*PI*2.54*10000;
 void handleWallPID();
 void handleTurn();
+void handleSpecCase();
+void handleForward();
 float targetTurnHeading=0; //Rad
+long long forwardTarget = 0;//mm dist
+
 void loop() {
   switch(currentState)
   {
@@ -71,14 +76,16 @@ void loop() {
     currentState = WALL_FOLLOW;
     break;
     case SPEC_CASE:
-    lastLeftSetpoint = 0;
-    lastRightSetpoint = 0;
+    handleSpecCase();
     break;
     case WALL_FOLLOW:
     handleWallPID();
     break;
     case TURN:
     handleTurn();
+    break;
+    case FORWARD_DIST:
+    handleForward();
     break;
     default:
     1+1;
@@ -246,5 +253,107 @@ void handleTurn() {
         previousState = TURN;
         doneTurn = false;
       }
+  }
+}
+
+void handleSpecCase() {
+  static enum SpecCaseStep{
+    FORWARD_FIRST,
+    TURN_FIRST,
+    FORWARD_SECOND,
+    TURN_SECOND,
+    FORWARD_THIRD,
+    DONE
+  } myState = FORWARD_FIRST;
+  switch(myState)
+  {
+    case FORWARD_FIRST:
+    previousState = currentState;
+    //set forward target
+    forwardTarget = (25.4*8);
+    currentState = FORWARD_DIST;
+    myState = TURN_FIRST;
+    break;
+    case TURN_FIRST:
+    previousState = currentState;
+    //set turn target
+    targetTurnHeading = getTheta()-(PI/2);
+    currentState = TURN;
+    myState = FORWARD_SECOND;
+    break;
+    case FORWARD_SECOND:
+    previousState = currentState;
+    //set forward target
+    forwardTarget = (25.4*15);
+    currentState = FORWARD_DIST;
+    myState = TURN_SECOND;
+    break;
+    case TURN_SECOND:
+    previousState = currentState;
+    //set turn target
+    targetTurnHeading = getTheta()-(PI/2);
+    currentState = TURN;
+    myState = FORWARD_THIRD;
+    break;
+    case FORWARD_THIRD:
+    previousState = currentState;
+    //set forward target
+    forwardTarget = (25.4*10);
+    currentState = FORWARD_DIST;
+    myState = DONE;
+    break;
+    case DONE:
+    previousState = currentState;
+    currentState = WALL_FOLLOW;
+    myState = FORWARD_FIRST;
+    break;
+    default:
+    break;
+  }
+}
+
+static const int FORWARD_TOL = 0.5*25.4;//mm
+void handleForward() {
+  static bool started = false;
+  static long startX = 0; //mm
+  static long startY = 0; //mm
+  static long long stopTime = 0;
+  static bool stopping = false;
+  if(started == false)
+  {
+    startX = getXLoc();
+    startY = getYLoc();
+    started = true;
+  }
+  long diffX = abs(getXLoc()-startX);
+  long diffY = abs(getYLoc()-startY);
+  long distTravel = sqrt((diffX*diffX)+(diffY*diffY));
+  if((forwardTarget-distTravel)>FORWARD_TOL)
+  {
+    lastLeftSetpoint = SETPOINT;
+    lastRightSetpoint = SETPOINT;
+  }
+  else if((distTravel-forwardTarget)>FORWARD_TOL)
+  {
+    lastLeftSetpoint = -1*SETPOINT;
+    lastRightSetpoint = -1*SETPOINT;
+  }
+  else
+  {
+    //in tol
+    lastLeftSetpoint = 0;
+    lastRightSetpoint = 0;
+    if(stopping == false)
+    {
+      stopping = true;
+      stopTime = micros();
+    }
+    if((micros()-stopTime)>500000)
+    {
+      stopping = false;
+      started = false;
+      currentState = previousState;
+      previousState = FORWARD_DIST;
+    }
   }
 }
