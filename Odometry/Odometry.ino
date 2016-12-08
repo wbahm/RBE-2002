@@ -70,6 +70,10 @@ void loop() {
     case STANDBY://add btn later
     currentState = WALL_FOLLOW;
     break;
+    case SPEC_CASE:
+    lastLeftSetpoint = 0;
+    lastRightSetpoint = 0;
+    break;
     case WALL_FOLLOW:
     handleWallPID();
     break;
@@ -143,6 +147,10 @@ void handleWallPID() {
       previousState = WALL_FOLLOW;
       DebugPrintln("Back to turn");
     }
+    else if(newState.specCase)
+    {
+      currentState = SPEC_CASE;
+    }
     else
     {
       walloffsetpidOut = wallOffsetPid -> compute(WALL_OFFSET_SETPOINT,newState.wallDist);
@@ -184,6 +192,8 @@ void handleWallPID() {
 
 static const float TURN_TOL = 5*(PI/180.0); //Rad
 
+long long stoppedTime = 0;
+bool doneTurn = false;
 void handleTurn() {
   //Serial.println("Turn");
   if(targetTurnHeading>(2*PI))
@@ -192,7 +202,7 @@ void handleTurn() {
   }
   float currentHeading = getTheta();
   long long pidOut = abs(turnPid -> compute(targetTurnHeading*10000,currentHeading*10000)); //scaled because pid uses long longs
-  if(currentHeading < targetTurnHeading)
+  if((targetTurnHeading>currentHeading) xor (abs(targetTurnHeading-currentHeading)>PI))
   {
     //turn counter clockwise
     lastLeftSetpoint = constrain(-1*pidOut,-1*MAX_SETPOINT,MAX_SETPOINT);
@@ -207,14 +217,22 @@ void handleTurn() {
   DebugPrint((long)lastLeftSetpoint);
   DebugPrint('\t');
   DebugPrint((long)lastRightSetpoint);
-    DebugPrint('\t');
+  DebugPrint('\t');
   DebugPrintln(abs(getTheta()-targetTurnHeading));
   if(abs(getTheta()-targetTurnHeading)<TURN_TOL)
   {
+    if(doneTurn == false)
+    {
+      doneTurn = true;
+      stoppedTime = micros();
+    }
       lastLeftSetpoint = 0; //stop motors
       lastRightSetpoint = 0;
-      currentState = previousState;
-      previousState = TURN;
-      Serial.println("Back to wall");
+      if((micros()-stoppedTime)>500000)
+      {
+        currentState = previousState;
+        previousState = TURN;
+        doneTurn = false;
+      }
   }
 }
