@@ -27,6 +27,9 @@ long lastLeftPwr = 0;
 long lastRightPwr = 0;
 unsigned long long lastLeftEnc = 0;
 unsigned long long lastRightEnc = 0;
+
+PID* wallOffsetPid;
+PID* wallThetaPid;
 void setup() {
   DebugBegin();
   DebugPrintln("Serial started");
@@ -34,6 +37,8 @@ void setup() {
   initDrivePWM();//sets up timer for PWM generation
   leftPid = new PID(100,0,0);
   rightPid = new PID(100,0,0);
+  wallOffsetPid = new PID(3000000,0,0);//600000
+  wallThetaPid = new PID(600000,0,0); 
 }
 unsigned long long lastWallPID = 0;
 long long lastLeftSetpoint = SETPOINT;//+50000;
@@ -42,18 +47,10 @@ long long walloffsetpidOut = 0;
 long long wallthetapidOut = 0;
 long long MAX_SETPOINT = 0.9*2.75*PI*2.54*10000;
 long long MIN_SETPOINT = 0.3*2.75*PI*2.54*10000;
+void handleWallPID();
 void loop() {
   // wall pid
-  if(micros()>5000000)
-  {
-    lastLeftSetpoint = 0;
-    lastRightSetpoint = 0;
-  }
-  else
-  {
-    lastLeftSetpoint = SETPOINT;
-    lastRightSetpoint = SETPOINT*.75;
-  }
+  handleWallPID();
   handleMotorControl(lastLeftSetpoint,lastRightSetpoint);
   computeOdometry(&leftEnc,&rightEnc);
   DebugPrint(getXLoc()); //mm
@@ -98,6 +95,54 @@ void handleMotorControl(long long leftSetpoint,long long rightSetpoint) {
     else
     {
       setDrivePWM((unsigned int)(-1*lastRightPwr), RIGHT,BACKWARD);
+    }
+  }
+}
+
+void handleWallPID() {
+  if((micros()-lastWallPID) >(16667)) //60 hz
+  {
+    lastWallPID = micros();
+    WallState newState = getWallState(RIGHT_WALL);
+    if((newState.frontDist < (25.4*10))&&(newState.frontDist!=-1))
+    {
+      lastLeftSetpoint = 0; //stop if wall in front is too close
+      lastRightSetpoint = 0;
+    }
+    else
+    {
+      walloffsetpidOut = wallOffsetPid -> compute(WALL_OFFSET_SETPOINT,newState.wallDist);
+      wallthetapidOut = wallThetaPid -> compute(0,newState.theta);
+      
+      lastLeftSetpoint = (SETPOINT-walloffsetpidOut+wallthetapidOut);
+      lastRightSetpoint = (SETPOINT+walloffsetpidOut-wallthetapidOut);
+      lastLeftSetpoint = constrain(lastLeftSetpoint,MIN_SETPOINT,MAX_SETPOINT);
+      lastRightSetpoint = constrain(lastRightSetpoint,MIN_SETPOINT,MAX_SETPOINT);
+      
+      /*DebugPrint(newState.wallDist/25.4);
+      DebugPrint('\t');
+      DebugPrint((newState.theta/PI)*0.180);
+      DebugPrint('\t');
+      DebugPrint('\t');
+      DebugPrint((long)walloffsetpidOut);
+      DebugPrint('\t');
+      DebugPrint((long)wallthetapidOut);
+      DebugPrint('\t');
+      DebugPrint('\t');
+      DebugPrint((long)lastLeftSetpoint);
+      DebugPrint('\t');
+      DebugPrint((long)lastRightSetpoint);
+      DebugPrint('\t');
+      DebugPrint('\t');*/
+      static long lastLeftVal = leftEnc.read();
+      long leftdiff = leftEnc.read()-lastLeftVal;
+      lastLeftVal = leftEnc.read();
+      static long lastRightVal = rightEnc.read();
+      long rightdiff = rightEnc.read()-lastRightVal;
+      lastRightVal = rightEnc.read();
+      /*DebugPrint((leftdiff/8245.81)*(1000000/16667.0));
+      DebugPrint('\t');
+      DebugPrintln((rightdiff/8245.81)*(1000000/16667.0));*/
     }
   }
 }
