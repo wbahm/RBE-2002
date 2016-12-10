@@ -3,6 +3,7 @@
 #include "Arduino.h"
 #include "Encoder.h"
 #include "Rates.h"
+#include "DriveController.h"
 struct RobotPos {
   long x_loc = 0; //um
   long y_loc = 0; //um
@@ -13,7 +14,7 @@ struct RobotPos {
 };
 static RobotPos myPosition;
 
-void computeOdometry(Encoder* leftEnc,Encoder* rightEnc); //called as fast as possible, it handles timing
+void computeOdometry(DriveController* myController); //called as fast as possible, it handles timing
 
 long getXLoc();//Returns value in mm
 long getYLoc();//Returns value in mm
@@ -25,6 +26,6 @@ static const float RIGHT_DIST_PER_REV = 2.74*25.4*1000*PI;
 static const float LEFT_DIST_PER_TICK = LEFT_DIST_PER_REV/TICKS_PER_REV;
 static const float RIGHT_DIST_PER_TICK = RIGHT_DIST_PER_REV/TICKS_PER_REV;
 
-static const float WHEEL_BASE = 9*25.4*1000; //um check if 9 in is correct correct
+static const float WHEEL_BASE = 10*25.4*1000; //um check if 10 in is correct correct
 
 #endif

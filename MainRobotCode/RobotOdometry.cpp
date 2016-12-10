@@ -1,12 +1,12 @@
 #include "RobotOdometry.h"
 #include "Arduino.h"
 
-void computeOdometry(Encoder* leftEnc,Encoder* rightEnc) { //called as fast as possible, it handles timing
+void computeOdometry(DriveController* myController) { //called as fast as possible, it handles timing
   if((micros()-myPosition.lastOdometryTime) > ODOMETRY_PERIOD_US) //controls update rate
   {
     myPosition.lastOdometryTime = micros();
-    long leftReading = leftEnc->read();
-    long rightReading = rightEnc->read(); 
+    long leftReading = myController->getLeftEncCount();
+    long rightReading = myController->getRightEncCount(); 
     long leftDiff = leftReading-myPosition.lastLeftEnc;
     long rightDiff = rightReading-myPosition.lastRightEnc;
     myPosition.lastLeftEnc = leftReading;

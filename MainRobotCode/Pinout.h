@@ -3,10 +3,10 @@
 
 #define LEFT_ENC_CHAN_A 20
 #define LEFT_ENC_CHAN_B 19
-#define LEFT_ENC_REV false
+#define LEFT_ENC_REV 0
 
-#define LEFT_ENC_CHAN_A 18
-#define LEFT_ENC_CHAN_B 3
-#define LEFT_ENC_REV false
+#define RIGHT_ENC_CHAN_A 18
+#define RIGHT_ENC_CHAN_B 3
+#define RIGHT_ENC_REV 0
 
 #endif
