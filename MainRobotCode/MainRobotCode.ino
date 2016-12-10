@@ -38,7 +38,7 @@ void setup() {
   wallInit();
   wallOffsetPid = new PID(3000000,0,0);//600000
   wallThetaPid = new PID(600000,0,0); 
-  turnPid = new PID(1000000,0,0);
+  turnPid = new PID(1250000,0,0);
 }
 unsigned long long lastWallPID = 0;
 //long long lastLeftSetpoint = SETPOINT;//+50000;
@@ -204,7 +204,7 @@ void handleSpecCase() {
     case FORWARD_FIRST:
     previousState = currentState;
     //set forward target
-    forwardTarget = (25.4*8);
+    forwardTarget = (25.4*10);
     currentState = FORWARD_DIST;
     myState = TURN_FIRST;
     break;
@@ -218,7 +218,7 @@ void handleSpecCase() {
     case FORWARD_SECOND:
     previousState = currentState;
     //set forward target
-    forwardTarget = (25.4*15);
+    forwardTarget = (25.4*22);
     currentState = FORWARD_DIST;
     myState = TURN_SECOND;
     break;
@@ -232,7 +232,7 @@ void handleSpecCase() {
     case FORWARD_THIRD:
     previousState = currentState;
     //set forward target
-    forwardTarget = (25.4*10);
+    forwardTarget = (25.4*15);
     currentState = FORWARD_DIST;
     myState = DONE;
     break;
