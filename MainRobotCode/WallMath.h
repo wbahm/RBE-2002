@@ -13,7 +13,7 @@
 static void wallInit() {
   analogReference(INTERNAL2V56); //Better range for IR sensors which max out at 2.25v
    ADCSRA &= ~0x7;  // remove clk prescaler arduino set
-   ADCSRA |= (1<<ADPS2);//sets prescaler to 16; using full 1 Mhz rate recommended
+   ADCSRA |= (1<<ADPS2);//sets prescaler to 16; using full 1 Mhz rate recommended that you don't go any higher
 }
 
 static long Y_SENS = (long)(25.4*6); //y Offset between sensors
@@ -38,7 +38,7 @@ typedef enum WallSide {
 typedef struct WallState {
   long frontDist; //mm
   long wallDist; //mm
-  long theta; //mRad
+  float theta; //Rad
   bool specCase; //true if special case(front inf. and back not
 };
 
@@ -70,7 +70,7 @@ static WallState getWallState(WallSide side) {// Add averaging if needed
   
   long k1 = sqrt((Y_SENS*Y_SENS)+((d2-d1)*(d2-d1)));
   newState.wallDist = calculateXOffset(d1,d2,k1);
-  newState.theta = 1000*((PI/2)-acos((d2-d1)/(float)Y_SENS));
+  newState.theta = ((PI/2)-acos((d2-d1)/(float)Y_SENS));
   if(d3 > MAX_IR_DIST)
   {
     newState.frontDist = -1;

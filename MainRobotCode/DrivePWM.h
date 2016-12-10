@@ -23,7 +23,7 @@ typedef enum DriveDirection {
 #define RIGHT_REVERSED 0
 
 //PWM defines
-#define PWM_FREQ 16000
+#define PWM_FREQ 16000 //this isn't in rates because it isn't a control loop but the hardware timer PWM freq
 #define CLOCK_FREQ 16000000
 static const unsigned int PWM_COUNT = (((CLOCK_FREQ/PWM_FREQ))-1);// make constant to avoid recomputing each time
 

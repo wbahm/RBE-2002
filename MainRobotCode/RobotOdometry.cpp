@@ -1,18 +1,8 @@
 #include "RobotOdometry.h"
 #include "Arduino.h"
-/*static RobotPos {
-  long x_loc = 0; //um
-  long y_loc = 0; //um
-  long theta = 0; //uRad
-  long lastLeftEnc = 0;
-  long lastRightEnc = 0;
-} myPosition;
-
-static const long long FREQ_ODOMETRY = 200; //hz
-static const long long US_PER_ODOMETRY = 1000000/FREQ_ODOMETRY; //in usec*/
 
 void computeOdometry(Encoder* leftEnc,Encoder* rightEnc) { //called as fast as possible, it handles timing
-  if((micros()-myPosition.lastOdometryTime) > US_PER_ODOMETRY) //controls update rate
+  if((micros()-myPosition.lastOdometryTime) > ODOMETRY_PERIOD_US) //controls update rate
   {
     myPosition.lastOdometryTime = micros();
     long leftReading = leftEnc->read();
@@ -28,7 +18,7 @@ void computeOdometry(Encoder* leftEnc,Encoder* rightEnc) { //called as fast as p
     myPosition.x_loc += sin((PI/2)-(myPosition.theta/1000.0))*distTraveled;
     myPosition.y_loc += -1*cos((PI/2)-(myPosition.theta/1000.0))*distTraveled;
     
-    float encDeltaTheta = ((rightDist-leftDist)/WHEEL_BASE)*1000; //uRad
+    float encDeltaTheta = ((rightDist-leftDist)/WHEEL_BASE)*1000; //mRad
     //Serial.println(myPosition.theta);
     myPosition.theta += encDeltaTheta; //add gyrodometry here
     if(myPosition.theta > (2*PI*1000))

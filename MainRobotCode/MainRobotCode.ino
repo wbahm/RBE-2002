@@ -7,14 +7,11 @@
 #include "debug.h"
 
 #include "Encoder.h"
+#include "Rates.h"
 Encoder leftEnc(20,19);
 Encoder rightEnc(18,3);
 
 #include "RobotOdometry.h"
-
-unsigned long long lastContr = 0;
-const unsigned long long contrFreq = 200; //hz
-const unsigned long long contrT = 1000000/contrFreq;
 
 static const long long UM_PER_TICK = 27;
 static const long long US_TO_SEC = 1000000;
@@ -100,11 +97,12 @@ void loop() {
   DebugPrintln(getTheta()*(180/PI)); //deg*/
 }
 void handleMotorControl(long long leftSetpoint,long long rightSetpoint) {
-    if((micros()-lastContr)>contrT)
+  static unsigned long long lastLoopTime = 0;
+  if((micros()-lastLoopTime)>MOTOR_CONTROLLER_PERIOD_US)
   {  
     //Get time diff and enc diff
-    long long diffTime = micros()-lastContr;
-    lastContr = micros();
+    long long diffTime = micros()-lastLoopTime;
+    lastLoopTime = micros();
     long long leftDiffTicks = leftEnc.read()-lastLeftEnc;
     lastLeftEnc = leftEnc.read();
     long long rightDiffTicks = rightEnc.read()-lastRightEnc;
@@ -142,7 +140,7 @@ void handleMotorControl(long long leftSetpoint,long long rightSetpoint) {
 void handleWallPID() {
   static long long stoppedTime = 0;
   static bool doneTurn = false;
-  if((micros()-lastWallPID) >(16667)) //60 hz
+  if((micros()-lastWallPID) >WALL_FOLLOW_PERIOD_US)
   {
     lastWallPID = micros();
     WallState newState = getWallState(RIGHT_WALL);
